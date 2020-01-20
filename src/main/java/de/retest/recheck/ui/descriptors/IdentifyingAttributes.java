@@ -1,7 +1,5 @@
 package de.retest.recheck.ui.descriptors;
 
-import static de.retest.recheck.util.ObjectUtil.nextHashCode;
-
 import java.awt.Rectangle;
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -22,6 +20,8 @@ import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlRootElement;
 import javax.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
+
+import org.apache.commons.text.similarity.JaroWinklerSimilarity;
 
 import de.retest.recheck.ignore.GloballyIgnoredAttributes;
 import de.retest.recheck.ui.Path;
@@ -158,29 +158,15 @@ public class IdentifyingAttributes implements Serializable, Comparable<Identifyi
 	}
 
 	public double match( final IdentifyingAttributes other ) {
-		double result = 0.0;
-		double unifyingFactor = 0.0;
-		final Set<Attribute> otherAttributes = new HashSet<>( other.attributes.values() );
-		for ( final Attribute attribute : attributes.values() ) {
-			final Attribute otherAttribute = other.getAttribute( attribute.getKey() );
-			otherAttributes.remove( otherAttribute );
-			if ( GloballyIgnoredAttributes.getInstance().shouldIgnoreAttribute( attribute.getKey() ) ) {
-				continue;
-			}
-			unifyingFactor += attribute.getWeight();
-			if ( otherAttribute != null ) {
-				result += attribute.getWeight() * attribute.match( otherAttribute );
-			}
+		final String fairlySimilarInstance = System.getProperty( "de.retest.recheck.fairlySimilarInstance" );
+		switch ( fairlySimilarInstance ) {
+			case "1":
+				return fairlySimilar1( other );
+			case "2":
+				return fairlySimilar2( other );
+			default:
+				return fairlySimilar3( other );
 		}
-		for ( final Attribute attribute : otherAttributes ) {
-			unifyingFactor += attribute.getWeight();
-		}
-		if ( unifyingFactor == 0.0 ) {
-			throw new ArithmeticException( "Cannot divide with a unifying factor of 0.0" );
-		}
-		result = result / unifyingFactor;
-		assert result >= 0.0 && result <= 1.0 : "Match result " + result + " should be in [0,1].";
-		return result;
 	}
 
 	@Override
@@ -248,6 +234,96 @@ public class IdentifyingAttributes implements Serializable, Comparable<Identifyi
 
 	public static boolean isIdentifyingAttribute( final String key ) {
 		return identifyingAttributes.contains( key );
+	}
+
+	// fairly similar instances
+
+	public double fairlySimilar1( final IdentifyingAttributes other ) {
+		final Set<Attribute> strong = getStrongIdentifyingAttributes( this );
+		final Set<Attribute> otherStrong = getStrongIdentifyingAttributes( other );
+		if ( !strong.equals( otherStrong ) ) {
+			return 0.0;
+		}
+
+		if ( !weakKeysPresent( other ) ) {
+			return 0.0;
+		}
+
+		return 1.0;
+	}
+
+	public double fairlySimilar2( final IdentifyingAttributes other ) {
+		if ( !fairlySimilarTest( other ) ) {
+			return 0.0;
+		}
+
+		if ( !weakKeysPresent( other ) ) {
+			return 0.0;
+		}
+
+		return 1.0;
+	}
+
+	public double fairlySimilar3( final IdentifyingAttributes other ) {
+		double result = 0.0;
+		double unifyingFactor = 0.0;
+		final Set<Attribute> otherAttributes = new HashSet<>( other.attributes.values() );
+		for ( final Attribute attribute : attributes.values() ) {
+			final Attribute otherAttribute = other.getAttribute( attribute.getKey() );
+			otherAttributes.remove( otherAttribute );
+			if ( GloballyIgnoredAttributes.getInstance().shouldIgnoreAttribute( attribute.getKey() ) ) {
+				continue;
+			}
+			unifyingFactor += attribute.getWeight();
+			if ( otherAttribute != null ) {
+				result += attribute.getWeight() * attribute.match( otherAttribute );
+			}
+		}
+		for ( final Attribute attribute : otherAttributes ) {
+			unifyingFactor += attribute.getWeight();
+		}
+		if ( unifyingFactor == 0.0 ) {
+			throw new ArithmeticException( "Cannot divide with a unifying factor of 0.0" );
+		}
+		result = result / unifyingFactor;
+		assert result >= 0.0 && result <= 1.0 : "Match result " + result + " should be in [0,1].";
+		return result;
+	}
+
+	// fairly similar helpers
+
+	private boolean weakKeysPresent( final IdentifyingAttributes other ) {
+		final Set<String> weak = getWeakIdentifyingKeys( this );
+		return getWeakIdentifyingKeys( other ).stream() //
+				.map( weak::contains ) //
+				.reduce( false, Boolean::logicalOr );
+	}
+
+	private boolean fairlySimilarTest( final IdentifyingAttributes other ) {
+		final Set<Attribute> strong = getStrongIdentifyingAttributes( this );
+		return strong.stream() //
+				.map( attribute -> {
+					final String key = attribute.getKey();
+					final String value = Objects.toString( get( key ) );
+					final String otherValue = Objects.toString( other.get( key ) );
+					return new JaroWinklerSimilarity().apply( value, otherValue ) > 0.3;
+				} ) //
+				.reduce( true, Boolean::logicalAnd );
+	}
+
+	private static Set<Attribute> getStrongIdentifyingAttributes( final IdentifyingAttributes all ) {
+		final Set<String> strongKeys = new HashSet<>( Arrays.asList( "TODO specify strong keys" ) );
+		return all.getAttributes().stream() //
+				.filter( attribute -> strongKeys.contains( attribute.getKey() ) ) //
+				.collect( Collectors.toCollection( HashSet::new ) );
+	}
+
+	private static Set<String> getWeakIdentifyingKeys( final IdentifyingAttributes all ) {
+		final Set<String> weakKeys = new HashSet<>( Arrays.asList( "TODO specify weak keys" ) );
+		return all.getAttributes().stream() //
+				.map( Attribute::getKey ) //
+				.filter( weakKeys::contains ) //
+				.collect( Collectors.toCollection( HashSet::new ) );
 	}
 
 }
