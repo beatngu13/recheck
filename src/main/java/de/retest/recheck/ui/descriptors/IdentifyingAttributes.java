@@ -13,6 +13,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
+import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
 import javax.xml.bind.annotation.XmlAccessType;
@@ -34,6 +35,26 @@ import lombok.EqualsAndHashCode;
 @XmlRootElement
 @XmlAccessorType( XmlAccessType.FIELD )
 public class IdentifyingAttributes implements Serializable, Comparable<IdentifyingAttributes> {
+
+	/**
+	 * Determines the fairly similar instance to be used, i.e., 1, 2 or 3.
+	 */
+	public static final String FAIRLY_SIMILAR_INSTANCE_PROPERTY = "de.retest.visualtesting.fairlySimilarInstance";
+
+	private static final BiFunction<IdentifyingAttributes, IdentifyingAttributes, Double> fairlySimilarInstance =
+			getFairlySimilarInstance();
+
+	private static BiFunction<IdentifyingAttributes, IdentifyingAttributes, Double> getFairlySimilarInstance() {
+		final String fairlySimilarInstance = System.getProperty( FAIRLY_SIMILAR_INSTANCE_PROPERTY );
+		switch ( fairlySimilarInstance ) {
+			case "1":
+				return IdentifyingAttributes::fairlySimilar1;
+			case "2":
+				return IdentifyingAttributes::fairlySimilar2;
+			default:
+				return IdentifyingAttributes::fairlySimilar3;
+		}
+	}
 
 	public static final String PATH_ATTRIBUTE_KEY = "path";
 	public static final String TYPE_ATTRIBUTE_KEY = "type";
@@ -158,15 +179,7 @@ public class IdentifyingAttributes implements Serializable, Comparable<Identifyi
 	}
 
 	public double match( final IdentifyingAttributes other ) {
-		final String fairlySimilarInstance = System.getProperty( "de.retest.recheck.fairlySimilarInstance" );
-		switch ( fairlySimilarInstance ) {
-			case "1":
-				return fairlySimilar1( other );
-			case "2":
-				return fairlySimilar2( other );
-			default:
-				return fairlySimilar3( other );
-		}
+		return fairlySimilarInstance.apply( this, other );
 	}
 
 	@Override
@@ -238,37 +251,37 @@ public class IdentifyingAttributes implements Serializable, Comparable<Identifyi
 
 	// fairly similar instances
 
-	public double fairlySimilar1( final IdentifyingAttributes other ) {
-		final Set<Attribute> strong = getStrongIdentifyingAttributes( this );
+	private static double fairlySimilar1( final IdentifyingAttributes thiz, final IdentifyingAttributes other ) {
+		final Set<Attribute> strong = getStrongIdentifyingAttributes( thiz );
 		final Set<Attribute> otherStrong = getStrongIdentifyingAttributes( other );
 		if ( !strong.equals( otherStrong ) ) {
 			return 0.0;
 		}
 
-		if ( !weakKeysPresent( other ) ) {
+		if ( !weakKeysPresent( thiz, other ) ) {
 			return 0.0;
 		}
 
 		return 1.0;
 	}
 
-	public double fairlySimilar2( final IdentifyingAttributes other ) {
-		if ( !fairlySimilarTest( other ) ) {
+	private static double fairlySimilar2( final IdentifyingAttributes thiz, final IdentifyingAttributes other ) {
+		if ( !fairlySimilarTest( thiz, other ) ) {
 			return 0.0;
 		}
 
-		if ( !weakKeysPresent( other ) ) {
+		if ( !weakKeysPresent( thiz, other ) ) {
 			return 0.0;
 		}
 
 		return 1.0;
 	}
 
-	public double fairlySimilar3( final IdentifyingAttributes other ) {
+	private static double fairlySimilar3( final IdentifyingAttributes thiz, final IdentifyingAttributes other ) {
 		double result = 0.0;
 		double unifyingFactor = 0.0;
 		final Set<Attribute> otherAttributes = new HashSet<>( other.attributes.values() );
-		for ( final Attribute attribute : attributes.values() ) {
+		for ( final Attribute attribute : thiz.attributes.values() ) {
 			final Attribute otherAttribute = other.getAttribute( attribute.getKey() );
 			otherAttributes.remove( otherAttribute );
 			if ( GloballyIgnoredAttributes.getInstance().shouldIgnoreAttribute( attribute.getKey() ) ) {
@@ -292,19 +305,19 @@ public class IdentifyingAttributes implements Serializable, Comparable<Identifyi
 
 	// fairly similar helpers
 
-	private boolean weakKeysPresent( final IdentifyingAttributes other ) {
-		final Set<String> weak = getWeakIdentifyingKeys( this );
+	private static boolean weakKeysPresent( final IdentifyingAttributes thiz, final IdentifyingAttributes other ) {
+		final Set<String> weak = getWeakIdentifyingKeys( thiz );
 		return getWeakIdentifyingKeys( other ).stream() //
 				.map( weak::contains ) //
 				.reduce( false, Boolean::logicalOr );
 	}
 
-	private boolean fairlySimilarTest( final IdentifyingAttributes other ) {
-		final Set<Attribute> strong = getStrongIdentifyingAttributes( this );
+	private static boolean fairlySimilarTest( final IdentifyingAttributes thiz, final IdentifyingAttributes other ) {
+		final Set<Attribute> strong = getStrongIdentifyingAttributes( thiz );
 		return strong.stream() //
 				.map( attribute -> {
 					final String key = attribute.getKey();
-					final String value = Objects.toString( get( key ) );
+					final String value = Objects.toString( thiz.get( key ) );
 					final String otherValue = Objects.toString( other.get( key ) );
 					return new JaroWinklerSimilarity().apply( value, otherValue ) > 0.3;
 				} ) //
