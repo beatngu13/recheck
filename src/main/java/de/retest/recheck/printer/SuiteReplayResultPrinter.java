@@ -20,8 +20,12 @@ public class SuiteReplayResultPrinter implements Printer<SuiteReplayResult> {
 	private String createDescription( final SuiteReplayResult difference ) {
 		final String name = difference.getName();
 		final int differences = difference.getDifferencesCount();
+		final long deleted = difference.getDeletedCount();
+		final long created = difference.getCreatedCount();
+		final long maintained = difference.getMaintainedCount();
 		final int states = difference.getTestReplayResults().size();
-		return String.format( "Suite '%s' has %d difference(s) in %d test(s):", name, differences, states );
+		return String.format( "Suite '%s' has %d difference(s) (%d deleted, %d created, %d maintained) in %d test(s):",
+				name, differences, deleted, created, maintained, states );
 	}
 
 	private String createDifferences( final SuiteReplayResult difference, final String indent ) {

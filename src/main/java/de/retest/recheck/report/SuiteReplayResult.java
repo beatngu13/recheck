@@ -14,6 +14,7 @@ import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlRootElement;
 
 import de.retest.recheck.ui.descriptors.GroundState;
+import de.retest.recheck.ui.diff.ElementDifference;
 
 @XmlRootElement( name = "suite" )
 @XmlAccessorType( XmlAccessType.FIELD )
@@ -128,6 +129,33 @@ public class SuiteReplayResult implements Serializable {
 			}
 		}
 		return diffsCount;
+	}
+
+	public long getDeletedCount() {
+		return testReplayResults.stream() //
+				.flatMap( testReplayResult -> testReplayResult.getActionReplayResults().stream() ) //
+				.map( ActionReplayResult::getAllElementDifferences ) //
+				.flatMap( elementDiffs -> elementDiffs.stream() ) //
+				.filter( ElementDifference::isDeletion ) //
+				.count();
+	}
+
+	public long getCreatedCount() {
+		return testReplayResults.stream() //
+				.flatMap( testReplayResult -> testReplayResult.getActionReplayResults().stream() ) //
+				.map( ActionReplayResult::getAllElementDifferences ) //
+				.flatMap( elementDiffs -> elementDiffs.stream() ) //
+				.filter( ElementDifference::isInsertion ) //
+				.count();
+	}
+
+	public long getMaintainedCount() {
+		return testReplayResults.stream() //
+				.flatMap( testReplayResult -> testReplayResult.getActionReplayResults().stream() ) //
+				.map( ActionReplayResult::getAllElementDifferences ) //
+				.flatMap( elementDiffs -> elementDiffs.stream() ) //
+				.filter( elementDiff -> !elementDiff.isInsertionOrDeletion() ) //
+				.count();
 	}
 
 	public int getCheckedUiElementsCount() {
