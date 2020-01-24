@@ -30,7 +30,9 @@ import de.retest.recheck.ui.PathElement;
 import de.retest.recheck.ui.diff.AttributeDifference;
 import de.retest.recheck.util.ChecksumCalculator;
 import lombok.EqualsAndHashCode;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @EqualsAndHashCode
 @XmlRootElement
 @XmlAccessorType( XmlAccessType.FIELD )
@@ -46,6 +48,7 @@ public class IdentifyingAttributes implements Serializable, Comparable<Identifyi
 
 	private static BiFunction<IdentifyingAttributes, IdentifyingAttributes, Double> getFairlySimilarInstance() {
 		final String fairlySimilarInstance = System.getProperty( FAIRLY_SIMILAR_INSTANCE_PROPERTY );
+		log.debug( "Fairly similar instance is set to '{}'.", fairlySimilarInstance );
 		switch ( fairlySimilarInstance ) {
 			case "1":
 				return IdentifyingAttributes::fairlySimilar1;
