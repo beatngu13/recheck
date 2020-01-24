@@ -329,14 +329,14 @@ public class IdentifyingAttributes implements Serializable, Comparable<Identifyi
 	}
 
 	private static Set<Attribute> getStrongIdentifyingAttributes( final IdentifyingAttributes all ) {
-		final Set<String> strongKeys = new HashSet<>( Arrays.asList( "id" ) );
+		final Set<String> strongKeys = new HashSet<>( Arrays.asList( "id", "path" ) );
 		return all.getAttributes().stream() //
 				.filter( attribute -> strongKeys.contains( attribute.getKey() ) ) //
 				.collect( Collectors.toCollection( HashSet::new ) );
 	}
 
 	private static Set<String> getWeakIdentifyingKeys( final IdentifyingAttributes all ) {
-		final Set<String> weakKeys = new HashSet<>( Arrays.asList( "path", "type", "x", "y", "height", "width" ) );
+		final Set<String> weakKeys = new HashSet<>( Arrays.asList( "type", "x", "y", "height", "width" ) );
 		return all.getAttributes().stream() //
 				.map( Attribute::getKey ) //
 				.filter( weakKeys::contains ) //
