@@ -47,13 +47,14 @@ public class IdentifyingAttributes implements Serializable, Comparable<Identifyi
 			getFairlySimilarInstance();
 
 	private static BiFunction<IdentifyingAttributes, IdentifyingAttributes, Double> getFairlySimilarInstance() {
-		final String fairlySimilarInstance = System.getProperty( FAIRLY_SIMILAR_INSTANCE_PROPERTY );
+		final String fairlySimilarInstance = System.getProperty( FAIRLY_SIMILAR_INSTANCE_PROPERTY, "3" );
 		log.debug( "Fairly similar instance is set to '{}'.", fairlySimilarInstance );
 		switch ( fairlySimilarInstance ) {
 			case "1":
 				return IdentifyingAttributes::fairlySimilar1;
 			case "2":
 				return IdentifyingAttributes::fairlySimilar2;
+			case "3":
 			default:
 				return IdentifyingAttributes::fairlySimilar3;
 		}
