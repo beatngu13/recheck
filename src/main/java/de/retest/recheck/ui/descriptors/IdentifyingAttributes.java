@@ -321,7 +321,7 @@ public class IdentifyingAttributes implements Serializable, Comparable<Identifyi
 		return strong.stream() //
 				.map( attribute -> {
 					final String key = attribute.getKey();
-					final String value = Objects.toString( thiz.get( key ) );
+					final String value = Objects.toString( attribute.getValue() );
 					final String otherValue = Objects.toString( other.get( key ) );
 					return new JaroWinklerSimilarity().apply( value, otherValue ) > 0.9;
 				} ) //
